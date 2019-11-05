@@ -16,6 +16,8 @@ app.use(bodyParser.json())
 
 app.post('/webhook', (req, res) => {
 
+console.log('Start');
+
     let events = req.body.events[0];
     Process(events);
     res.sendStatus(200)
@@ -37,10 +39,10 @@ async function Process(events) {
     }  
 
     if (SF_Token != null) {
-      //  console.log('Token.affinityToken : ' + SF_Token.affinityToken + 'Token.key : ' + SF_Token.key);
+        console.log('Token.affinityToken : ' + SF_Token.affinityToken + 'Token.key : ' + SF_Token.key);
         statusCode = await ConnectAgent(SF_Token);
     }
-
+    console.log('statusCode : '+statusCode);
     while (statusCode != '200') {
 
         mainSFToken = await GetTokenSF();
@@ -58,9 +60,19 @@ async function Process(events) {
         let respon = await GetResponAgent(SF_Token);
  
         respon.forEach(item => {
-     
             
-            if (item.type == 'ChatRequestFail') statusChatEnd = true;
+            console.log(item.type);
+            
+            if (item.type == 'ChatRequestFail' || item.type == 'ChatEnded')
+            {
+                statusChatEnd = true;
+                mainSFToken = null;
+if(item.type == 'ChatRequestFail')
+{
+    ReplyMessage_Line(events, 'agent offline');
+}
+
+            } 
             if (item.type == 'ChatMessage') {
                 let responMessage = item.message.text;
                 ReplyMessage_Line(events, responMessage);
@@ -144,7 +156,7 @@ function ConnectAgent(SF_Token) {
             'X-LIVEAGENT-SESSION-KEY': SF_Token.key,
             'X-LIVEAGENT-SEQUENCE': 1
 
-        }
+        } 
         let body_Start = JSON.stringify({
             sessionId: SF_Token.id,
             organizationId: "00Dp0000000DHzd",
@@ -168,11 +180,9 @@ function ConnectAgent(SF_Token) {
         }, (err, res, body) => {
 
 
-            if (res.statusCode == '200') {
-
-                return resolve('200');
-                //  return resolve(JSON.parse(res.body));
-            }
+                return resolve(res.statusCode);
+         
+            
 
         });
 
@@ -286,6 +296,3 @@ function ReplyMessage_Line(events, msg) {
 
 
 
-app.get('/', (req, res) => {
-    res.send('Hello World')
-})
